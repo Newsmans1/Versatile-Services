@@ -1,10 +1,13 @@
 const express = require('express');
 const crypto = require('crypto');
+const { Resend } = require('resend');
+
 const app = express();
 app.use(express.json());
 
+const resend = new Resend(process.env.RESEND_API_KEY);
 const HMAC_SECRET = process.env.HMAC_SECRET || 'changethislater';
-const keys = {}; // temporary storage, replace with DB later
+const keys = {};
 
 function generateKey() {
     const raw = crypto.randomBytes(32).toString('base64url');
@@ -16,8 +19,8 @@ function hashKey(key) {
     return crypto.createHash('sha256').update(key).digest('hex');
 }
 
-// SellHub hits this when someone buys
-app.post('/webhook/sellhub', (req, res) => {
+// SellHub webhook
+app.post('/webhook/sellhub', async (req, res) => {
     const { event, customer } = req.body;
     if (event !== 'order:completed') return res.sendStatus(400);
 
@@ -25,12 +28,24 @@ app.post('/webhook/sellhub', (req, res) => {
     const hash = hashKey(key);
     keys[hash] = { email: customer.email, activated: false };
 
-    console.log(`Key generated for ${customer.email}: ${key}`);
-    // TODO: email key to buyer
-    res.json({ success: true, key });
+    // Send key to buyer via email
+    await resend.emails.send({
+        from: 'onboarding@resend.dev',
+        to: customer.email,
+        subject: 'Your License Key',
+        html: `
+            <h2>Thank you for your purchase!</h2>
+            <p>Your license key is:</p>
+            <h3 style="background:#f4f4f4;padding:10px;">${key}</h3>
+            <p>Enter this key at our activation page to get started.</p>
+        `
+    });
+
+    console.log(`Key sent to ${customer.email}`);
+    res.json({ success: true });
 });
 
-// Your app hits this to validate a key
+// Activate key
 app.post('/activate', (req, res) => {
     const { key } = req.body;
     const hash = hashKey(key);
