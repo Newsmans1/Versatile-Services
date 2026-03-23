@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Activate License</title>
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 400px; margin: 100px auto; text-align: center; }
+    input { width: 100%; padding: 10px; margin: 10px 0; font-size: 16px; }
+    button { width: 100%; padding: 10px; background: #6c47ff; color: white; border: none; font-size: 16px; cursor: pointer; }
+    #result { margin-top: 20px; font-size: 18px; }
+  </style>
+</head>
+<body>
+  <h1>Activate Your License</h1>
+  <input id="key" placeholder="Enter your license key..." />
+  <button onclick="activate()">Activate</button>
+  <p id="result"></p>
+  <script>
+    async function activate() {
+      const key = document.getElementById('key').value;
+      const res = await fetch('https://nodejs-production-0703.up.railway.app/activate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key })
+      });
+      const data = await res.json();
+      document.getElementById('result').innerText = data.success ? '✅ ' + data.message : '❌ ' + data.message;
+    }
+  </script>
+</body>
+</html>
